@@ -42,17 +42,20 @@ def get_pos_typos(pw, pw_ent_bits, count = 1, req_len = 0):
 	p_shift_last = 0.2
 	p_prox = 21.8
 	# out of 100
-	sum_p = p_caps + p_shift_first + p_added_front + p_added_front + p_shift_last + p_prox
+	sum_p = p_caps + p_shift_first + p_added_front + p_added_end + p_shift_last + p_prox
 
 	#
 	sum_p -= p_added_front #
 	p_caps = (count * p_caps) / sum_p
 	p_shift_first = (count * p_shift_first) / sum_p
 	p_added_end = (count * p_added_end) / sum_p
-	p_added_front = (count * p_added_front) / sum_p
+	#p_added_front = (count * p_added_front) / sum_p
 	p_shift_last = (count * p_shift_last) / sum_p
 	p_prox = (count * p_prox) / sum_p
 	#
+
+	# small_sum = p_caps+p_shift_first + p_added_end + p_shift_last + p_prox ## TODO REMOVE
+	# print "initial sum: {}".format(small_sum) ## TODO REMOVE
 	many_typos = []
 	try:
 		t_caps = ''.join([CAPS,pw_press]) if pw_press[0] != CAPS else pw_press[1:]
@@ -91,7 +94,7 @@ def get_pos_typos(pw, pw_ent_bits, count = 1, req_len = 0):
 		nearby_len = len(nearby_chrs)
 		if not nearby_len:
 			continue
-		each_p = (1.0/length) * p_prox * (1.0 / nearby_len)
+		each_p = (1.0 / length) * p_prox * (1.0 / nearby_len)
 		for c_t in nearby_chrs:
 			typo = BACK_TO_WORD(''.join([pw_press[:i], c_t, pw_press[i+1:]]))
 			typo_ent_bits = password_strength(typo)['entropy'] ###
@@ -113,9 +116,15 @@ def get_pos_typos(pw, pw_ent_bits, count = 1, req_len = 0):
 			while (ii < m_t_len) and (many_typos[ii][1] == least_p):
 				ii += 1	
 			req_typos =  many_typos[:ii]
-			for jj in xrange(len(req_typos)):
+			for jj in xrange(ii):
 				sum_prob_of_req += req_typos[jj][1]
-			assert sum_prob_of_req i<= 1
+			assert sum_prob_of_req < 1.0000001 # there's a bit of miss-accuracy with float sums
+			# if sum_prob_of_req > 1.000000001: ###### there's a bit of miss-accuracy with float sums
+			# 	print 'prob_sum:', sum_prob_of_req
+			# 	print "bool:", sum_prob_of_req > 1.0
+			# 	print "pw '{}'' with too much prob, {} ".format(pw,sum_prob_of_req)
+			# 	for ttt in req_typos:
+			# 		print ttt
 			for jj in xrange(len(req_typos)):
 				tt, tt_pp = req_typos[jj]
 				req_typos[jj] = (tt, tt_pp / sum_prob_of_req)
@@ -131,7 +140,7 @@ def create_trie_only():
 	passwords_path = MAIN_DIR + 'rockyou-ascii.txt' # for quick checks
 	#passwords_path = MAIN_DIR + 'rockyou-ascii_3.txt' ##
 	#
-	
+	another_trie_path = MAIN_DIR + 'myTrieYay.txt'
 	all_names = []
 	with open(passwords_path,'rb') as ff:
 		with open(TRIE_PATH,'wb') as ww:
@@ -163,6 +172,7 @@ def create_trie_only():
 			print "finished collecting"
 			all_for_trie = marisa_trie.Trie(all_names)
 			print "trie createed writing to file"
+			all_for_trie.save(another_trie_path)
 			for word, code in all_for_trie.items():
 				ww.write(" ".join([str(code),str(word),'\n']))
 
@@ -174,16 +184,20 @@ def initiate_with_a_trie_file():
 	# file_path = MAIN_DIR + 'rockyou-ascii_3.txt' ##
 
 	print "Starting to create the trie"
-	list_for_marisa = []
-	with open(TRIE_PATH,'rb') as trie_file:
-		for line in trie_file:
-			tup = line.split()
-			code = ' '.join(tup[1:])
-			# print "code:{}, code length:{}".format(code,len(code)) # TODO REMOVE
-			list_for_marisa.append(code)
-	
-	TRIE_ALL = marisa_trie.Trie(list_for_marisa) # TODO CHANGE TO READ FROM FILE
-	print "Trie created with length: {}".format(len(list_for_marisa))
+	# list_for_marisa = []
+	# with open(TRIE_PATH,'rb') as trie_file:
+	# 	for line in trie_file:
+	# 		tup = line.split()
+	# 		code = ' '.join(tup[1:])
+	# 		# print "code:{}, code length:{}".format(code,len(code)) # TODO REMOVE
+	# 		list_for_marisa.append(code)
+	# TRIE_ALL = marisa_trie.Trie(list_for_marisa) # TODO CHANGE TO READ FROM FILE
+
+	another_trie_path = MAIN_DIR + 'myTrieYay.txt'
+	TRIE_ALL = marisa_trie.Trie()
+	TRIE_ALL.load(another_trie_path)
+	print "loaded the marisa_trie"
+	# print "Trie created with length: {}".format(len(list_for_marisa))
 	#
 	# NUM_OF_LINES = 10**8 # TODO CHANGE # TRIE SIZE
 	NUM_OF_LINES = 265796
@@ -527,6 +541,8 @@ if __name__ == "__main__":
 	# print NEARBY_KEYS('1')
 	# check1('123456')
 	# create_trie_only()
+
+	create_trie_only()
 	initiate_with_a_trie_file()
 	
 
